@@ -1,0 +1,25 @@
+As your project grows, you’ll need to:
+Add new tables
+Modify or rename columns
+Create or drop constraints
+Update indexes, etc.
+Alembic lets you do all that safely and version-controlled, without manually editing the DB or re-creating tables.
+
+---------------------------------------------
+Development Workflow Example:
+1.You modify a model:
+class User(Base):
+    ...
+    age = Column(Integer, nullable=True)
+
+
+
+2.This creates a migration file with SQL operations.:
+
+set PYTHONPATH=.
+alembic revision --autogenerate -m "Initial schema"
+
+
+3.Then run:
+alembic upgrade head
+🎉 Database schema updated!
