@@ -8,73 +8,56 @@ import os
 # Import all model files so SQLAlchemy sees them
 from app.models import user, role, page, pages_roles, tenant, users_roles
 
-# Determine database URL - use DATABASE_URL if provided (Railway/Production), otherwise build from components
-if os.environ.get('DATABASE_URL'):
-    # Production - use the provided connection string
-    DATABASE_URL = os.environ.get('DATABASE_URL').replace("postgres://", "postgresql://")
+# DEBUG: Log environment variables
+logger = logging.getLogger(__name__)
+logger.info("Environment variables: %s", dict(os.environ))
+
+# Get DATABASE_URL from environment (Railway provides this)
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    # Production - use Railway's DATABASE_URL
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://")
+    logger.info("Using DATABASE_URL from environment: %s", DATABASE_URL)
 else:
-    # Development - build from individual components
-    DATABASE_URL = f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+    # Development - use settings (but this should NOT happen on Railway)
+    DATABASE_URL = settings.SQLALCHEMY_DATABASE_URI
+    logger.warning("Using settings-based URL (this should not happen in production): %s", DATABASE_URL)
 
 # SQLAlchemy engine with appropriate configuration
-if DATABASE_URL.startswith('sqlite'):
+if DATABASE_URL and DATABASE_URL.startswith('sqlite'):
     # SQLite configuration
     engine = create_engine(
         DATABASE_URL, 
         connect_args={"check_same_thread": False},
-        echo=True  # Set to False in production
+        echo=True
     )
 else:
     # PostgreSQL configuration
     engine = create_engine(
         DATABASE_URL,
-        pool_size=5,           # Adjust based on your needs
-        max_overflow=10,       # Adjust based on your needs
-        pool_timeout=30,       # 30 seconds
-        pool_recycle=1800,     # Recycle connections after 30 minutes
-        echo=True             # Set to False in production
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_recycle=1800,
+        echo=True
     )
 
 # SessionLocal
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Logging
-logger = logging.getLogger(__name__)
-
 def create_db_and_tables():
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Tables created successfully.")
-        
-        # Log database type for debugging
-        if DATABASE_URL.startswith('sqlite'):
-            logger.info("Using SQLite database")
-        else:
-            logger.info("Using PostgreSQL database")
-            
+        logger.info("Using database: %s", DATABASE_URL)
     except Exception as e:
         logger.error(f"Error while creating tables: {e}")
         raise
 
 def get_db():
-    """
-    Dependency to get database session.
-    Use this in your FastAPI route dependencies.
-    """
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-# Optional: Function to check database connection
-def check_database_connection():
-    """Test database connection"""
-    try:
-        with engine.connect() as conn:
-            conn.execute("SELECT 1")
-        logger.info("Database connection successful")
-        return True
-    except Exception as e:
-        logger.error(f"Database connection failed: {e}")
-        return False
