@@ -1,0 +1,3 @@
+select   CustomerName StoreName,SalesDate,ProductName  As Style,Barcode SKU,SizeName,ColorName,InvoiceNo,GroupName  As category,isnull(SubCategoryName,'NA') SubCategoryName,isnull(ModelName,'NA')  As season,CategoryName  As gender 
+,RPU price, Qty*-1 As SaleQty,DiscPercent,DiscValue,VatPercent,VatValue,NetAmountWithFrac
+from SalesTransaction  where  TranStatus='PSO'  and GroupName<>'shopping bag' and Barcode not in ('99999999992','99999999991')
