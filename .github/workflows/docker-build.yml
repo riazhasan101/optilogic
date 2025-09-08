@@ -42,11 +42,5 @@ jobs:
     #       docker push ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
     #       docker push ${{ secrets.DOCKER_USERNAME }}/optilogic-web:${{ github.sha }}
 
-      
-      # Optional Step 5: Verify the image was pushed
-      - name: Verify Docker image
-        run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
-          docker images | grep ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
 
 
