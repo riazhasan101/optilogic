@@ -22,13 +22,13 @@
 
 # CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-# Use official Python image with Debian base
-FROM python:3.11
+# ===== Stage 1: Build stage =====
+FROM python:3.11 as builder
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies needed for prophet and other packages
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     gfortran \
@@ -41,17 +41,30 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip, setuptools, wheel
 RUN pip install --upgrade pip setuptools wheel
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements to leverage Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+# Install Python dependencies into /install
+RUN pip install --prefix=/install --no-cache-dir --prefer-binary -r requirements.txt
 
-# Copy project files
+# Copy the application code
 COPY . .
+
+# ===== Stage 2: Final minimal image =====
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy installed packages from builder stage
+COPY --from=builder /install /usr/local
+
+# Copy application code
+COPY --from=builder /app /app
 
 # Expose FastAPI port
 EXPOSE 8000
 
-# Command to run your FastAPI app
+# Run the FastAPI app
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
