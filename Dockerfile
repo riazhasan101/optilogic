@@ -72,27 +72,16 @@
 
 
 
-# Use official micromamba base image for speed
-FROM mambaorg/micromamba:1.5.0
+FROM mambaorg/micromamba:1.4.3
 
-# Set working directory
-WORKDIR /app
+COPY environment.yml /tmp/environment.yml
 
-# Copy your project files
-COPY . /app
+# Create environment
+RUN micromamba create -y -f /tmp/environment.yml -n optilogic \
+    && micromamba clean --all --yes
 
-# Copy the environment.yml
-COPY environment.yml /app/environment.yml
-
-# Use micromamba to create environment from environment.yml
-# --yes to skip prompts, --no-cache to avoid cache bloat
-RUN micromamba install -y -f environment.yml && \
-    micromamba clean --all --yes
-
-# Activate the environment
+# Activate environment
 SHELL ["micromamba", "run", "-n", "optilogic", "/bin/bash", "-c"]
 
-# Set entrypoint or command
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-
-
+# Optional: check installed packages
+RUN python -m pip list
