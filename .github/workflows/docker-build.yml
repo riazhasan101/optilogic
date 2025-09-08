@@ -21,18 +21,21 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 3: Build and push Docker image
+      # Step 3: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 4: Build and push Docker image
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
-          # Disable cache to avoid Buildx cache export errors
-          cache-from: type=registry,ref=none
-          cache-to: type=registry,ref=none
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
+            ${{ secrets.DOCKER_USERNAME }}/optilogic-web:${{ github.sha }}
 
-      # Step 4: Optional: Pull image to verify
+      # Step 5: Optional: Verify Docker image
       - name: Verify Docker Image
         run: |
           docker pull ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
