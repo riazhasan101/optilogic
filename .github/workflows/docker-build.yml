@@ -1,12 +1,12 @@
-name: Build and Push Docker image
+name: Build and Push Docker Image
 
 on:
   push:
     branches:
-      - main   # or master, or whichever branch you want to deploy
+      - main  # Trigger on push to main branch
 
 jobs:
-  build:
+  docker:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,26 +21,26 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 3: Build Docker image
-      - name: Build Docker image
+      # Step 3: Clean up dangling Docker images (optional but helps avoid build issues)
+      - name: Clean up old Docker images
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest .
+          docker image prune -af
 
-      # Step 4: Push Docker image
-      - name: Push Docker image
+      # Step 4: Build and push Docker image with caching
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
+            ${{ secrets.DOCKER_USERNAME }}/optilogic-web:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/optilogic-web:cache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/optilogic-web:cache,mode=max
+
+      # Step 5: Verify the image was pushed (optional)
+      - name: Verify Docker image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
-
-    # Optional: Tag with commit SHA and push both tags
-    # Uncomment the following lines if you want to tag with the commit SHA as well
-    #   - name: Build Docker image
-    #     run: |
-    #       docker build -t ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest \
-    #                    -t ${{ secrets.DOCKER_USERNAME }}/optilogic-web:${{ github.sha }} .
-    #   - name: Push Docker image
-    #     run: |
-    #       docker push ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
-    #       docker push ${{ secrets.DOCKER_USERNAME }}/optilogic-web:${{ github.sha }}
-
-
-
+          docker pull ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest
+          docker images | grep optilogic-web
+          docker run --rm ${{ secrets.DOCKER_USERNAME }}/optilogic-web:latest --version
