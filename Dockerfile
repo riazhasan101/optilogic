@@ -22,49 +22,77 @@
 
 # CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-# ===== Stage 1: Build stage =====
-FROM python:3.11 as builder
+# # ===== Stage 1: Build stage =====
+# FROM python:3.11 as builder
+
+# # Set working directory
+# WORKDIR /app
+
+# # Install build dependencies
+# RUN apt-get update && apt-get install -y \
+#     build-essential \
+#     gfortran \
+#     libgomp1 \
+#     python3-dev \
+#     libffi-dev \
+#     libssl-dev \
+#     && rm -rf /var/lib/apt/lists/*
+
+# # Upgrade pip, setuptools, wheel
+# RUN pip install --upgrade pip setuptools wheel
+
+# # Copy requirements to leverage Docker cache
+# COPY requirements.txt .
+
+# # Install Python dependencies into /install
+# RUN pip install --prefix=/install --no-cache-dir --prefer-binary -r requirements.txt
+
+# # Copy the application code
+# COPY . .
+
+# # ===== Stage 2: Final minimal image =====
+# FROM python:3.11-slim
+
+# # Set working directory
+# WORKDIR /app
+
+# # Copy installed packages from builder stage
+# COPY --from=builder /install /usr/local
+
+# # Copy application code
+# COPY --from=builder /app /app
+
+# # Expose FastAPI port
+# EXPOSE 8000
+
+# # Run the FastAPI app
+# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+
+
+
+# Use official micromamba base image for speed
+FROM mambaorg/micromamba:1.5.0
 
 # Set working directory
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    gfortran \
-    libgomp1 \
-    python3-dev \
-    libffi-dev \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Copy your project files
+COPY . /app
 
-# Upgrade pip, setuptools, wheel
-RUN pip install --upgrade pip setuptools wheel
+# Copy the environment.yml
+COPY environment.yml /app/environment.yml
 
-# Copy requirements to leverage Docker cache
-COPY requirements.txt .
+# Use micromamba to create environment from environment.yml
+# --yes to skip prompts, --no-cache to avoid cache bloat
+RUN micromamba install -y -f environment.yml && \
+    micromamba clean --all --yes
 
-# Install Python dependencies into /install
-RUN pip install --prefix=/install --no-cache-dir --prefer-binary -r requirements.txt
+# Activate the environment
+SHELL ["micromamba", "run", "-n", "optilogic", "/bin/bash", "-c"]
 
-# Copy the application code
-COPY . .
-
-# ===== Stage 2: Final minimal image =====
-FROM python:3.11-slim
-
-# Set working directory
-WORKDIR /app
-
-# Copy installed packages from builder stage
-COPY --from=builder /install /usr/local
-
-# Copy application code
-COPY --from=builder /app /app
-
-# Expose FastAPI port
-EXPOSE 8000
-
-# Run the FastAPI app
+# Set entrypoint or command
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
 
