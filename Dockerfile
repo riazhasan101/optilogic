@@ -71,34 +71,25 @@
 
 
 
-# Use official micromamba image
-FROM mambaorg/micromamba:1.4.3
+# Use official Python base image
+FROM python:3.11-slim
 
-# Set working directory
+# Set work directory
 WORKDIR /app
 
-# Copy only environment file first to leverage caching
-COPY environment.yml /tmp/environment.yml
+# Copy requirements first for caching
+COPY requirements.txt .
 
-# Create environment (without prophet) and pack it to speed up future builds
-RUN micromamba create -y -f /tmp/environment.yml -n optilogic \
-    --no-default-packages \
-    --strict-channel-priority \
-    && micromamba clean --all --yes \
-    && micromamba pack -n optilogic -o /tmp/optilogic.tar.gz
+# Install dependencies
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir --prefer-binary -r requirements.txt
 
-# Unpack the prebuilt environment (fast)
-RUN micromamba unpack -n base -f /tmp/optilogic.tar.gz
+# Copy the rest of your app
+COPY . .
 
-# Switch to new environment shell
-SHELL ["micromamba", "run", "-n", "optilogic", "/bin/bash", "-c"]
+# Expose port (adjust if needed)
+EXPOSE 8000
 
-# Install prophet separately via pip (fastest way)
-RUN pip install --no-cache-dir prophet==1.1.7
-
-# Copy your application code
-COPY . /app
-
-# Set default command
-CMD ["micromamba", "run", "-n", "optilogic", "python", "main.py"]
+# Default command
+CMD ["python", "main.py"]
 
