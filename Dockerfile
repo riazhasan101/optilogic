@@ -1,26 +1,26 @@
-FROM python:3.11-slim
+# FROM python:3.11-slim
 
-WORKDIR /app
+# WORKDIR /app
 
-# Install system dependencies for packages like psycopg2
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    gcc \
- && rm -rf /var/lib/apt/lists/*
+# # Install system dependencies for packages like psycopg2
+# RUN apt-get update && apt-get install -y \
+#     build-essential \
+#     libpq-dev \
+#     gcc \
+#  && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first
-COPY requirements.txt .
+# # Copy requirements first
+# COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# # Install Python dependencies
+# RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all app code
-COPY . .
+# # Copy all app code
+# COPY . .
 
-EXPOSE 8000
+# EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # # ===== Stage 1: Build stage =====
 # FROM python:3.11 as builder
@@ -68,5 +68,39 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 # # Run the FastAPI app
 # CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
+# ===== Stage 1: Builder =====
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+# Install build tools (for compiling packages)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
+        gcc \
+        && rm -rf /var/lib/apt/lists/*
+
+# Copy only requirements first (cache this layer)
+COPY requirements.txt .
+
+# Upgrade pip and install dependencies
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir --prefer-binary -r requirements.txt
+
+# ===== Stage 2: Final image =====
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy installed dependencies from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy app code
+COPY . .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 
