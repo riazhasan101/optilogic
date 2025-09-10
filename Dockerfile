@@ -73,7 +73,7 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Install build tools (for compiling packages)
+# Install build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
@@ -92,7 +92,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime dependencies (needed by psycopg2)
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq5 \
         && rm -rf /var/lib/apt/lists/*
@@ -104,8 +104,29 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy app code
 COPY . .
 
+# # Add build arguments for environment variables
+# ARG DB_USER
+# ARG DB_PASSWORD
+# ARG DB_HOST
+# ARG DB_PORT
+# ARG DB_NAME
+# ARG SECRET_KEY
+# ARG ALGORITHM
+# ARG ACCESS_TOKEN_EXPIRE_MINUTES
+
+# # Set environment variables
+# ENV DB_USER=$DB_USER
+# ENV DB_PASSWORD=$DB_PASSWORD
+# ENV DB_HOST=$DB_HOST
+# ENV DB_PORT=$DB_PORT
+# ENV DB_NAME=$DB_NAME
+# ENV SECRET_KEY=$SECRET_KEY
+# ENV ALGORITHM=$ALGORITHM
+# ENV ACCESS_TOKEN_EXPIRE_MINUTES=$ACCESS_TOKEN_EXPIRE_MINUTES
+
 EXPOSE 8000
 
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 
